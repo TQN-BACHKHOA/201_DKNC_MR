@@ -34,31 +34,31 @@ void initPI_Para(){
     PI.T            = 0.025;
     PI.pre_error    = 0;
     PI.error        = 0;
-    PI.setpoint     = 0;
+    PI.setpoint     = 50;
 }
 
 void initSTR_Para(){
-    STR.lambda = 0.95; 
+    STR.lambda = 0.97; 
     STR.error  = 0;
 		STR.pre_y  = 0;
     STR.y      = 0;
-		STR.pre_u  = 0;
-    STR.u      = 0;
+		STR.pre_u  = 499;
+    STR.u      = 499;
 	  float tmp_data[ARRAY_MAX_SIZE]  = {1, 1};
-    float tmp_data1[ARRAY_MAX_SIZE] = {1, 0, 0, 1};
+    float tmp_data1[ARRAY_MAX_SIZE*2] = {1, 0, 0, 1};
 		
     matrixDelete(STR.phi, 			ARRAY_MAX_SIZE, ARRAY_MAX_SIZE);
     matrixDelete(STR.phi_T, 		ARRAY_MAX_SIZE, ARRAY_MAX_SIZE);
 		matrixCreate(STR.theta, 		2, 1, tmp_data);
 		matrixCreate(STR.pre_theta, 2, 1, tmp_data);
     matrixDelete(STR.L, 				ARRAY_MAX_SIZE, ARRAY_MAX_SIZE);
-		matrixCreate(STR.P, 		2, 2, tmp_data1);
-		matrixCreate(STR.pre_P, 2, 2, tmp_data1);
+		matrixCreate(STR.P, 				2, 2, tmp_data1);
+		matrixCreate(STR.pre_P,			2, 2, tmp_data1);
 }
 
 void PI_Controller(){
-    STR.u = STR.pre_u + (0.508 - STR.theta[0][0])/STR.theta[1][0]*(PI.error - PI.pre_error) + 1.21/STR.theta[1][0]*PI.T/2*(PI.error + PI.pre_error);
-    STR.pre_u = STR.u;
+	  STR.pre_u = STR.u;
+    STR.u = STR.pre_u + (0.508 - STR.theta[0][0])*(PI.error - PI.pre_error)/STR.theta[1][0] + 1.21*PI.T*(PI.error + PI.pre_error)/(STR.theta[1][0]*2);
 }
 
 void LMS_Estimation(){

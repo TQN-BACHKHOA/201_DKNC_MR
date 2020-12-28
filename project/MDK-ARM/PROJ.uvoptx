@@ -153,37 +153,37 @@
         <Ww>
           <count>0</count>
           <WinNumber>1</WinNumber>
-          <ItemText>((TIM_TypeDef *) (((uint32_t)0x40000000) + 0x0800))-&gt;CCR1</ItemText>
+          <ItemText>PI.setpoint,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>1</count>
           <WinNumber>1</WinNumber>
-          <ItemText>TIM4-&gt;CCR2</ItemText>
+          <ItemText>mainMotor.measure_RPM,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>2</count>
           <WinNumber>1</WinNumber>
-          <ItemText>AChannel</ItemText>
+          <ItemText>((TIM_TypeDef *) ((((uint32_t)0x40000000) + 0x00010000) + 0x0000))-&gt;CCR1,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>3</count>
           <WinNumber>1</WinNumber>
-          <ItemText>BChannel</ItemText>
+          <ItemText>STR,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>4</count>
           <WinNumber>1</WinNumber>
-          <ItemText>direction</ItemText>
+          <ItemText>PI,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>5</count>
           <WinNumber>1</WinNumber>
-          <ItemText>PWMperRound</ItemText>
+          <ItemText>TIM5-&gt;CNT,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>6</count>
           <WinNumber>1</WinNumber>
-          <ItemText>((TIM_TypeDef *) ((((uint32_t)0x40000000) + 0x00010000) + 0x0000))-&gt;CCR1</ItemText>
+          <ItemText>RXBuffer,0x0A</ItemText>
         </Ww>
       </WatchWindow1>
       <Tracepoint>
@@ -266,7 +266,7 @@
       <GroupNumber>1</GroupNumber>
       <FileNumber>2</FileNumber>
       <FileType>1</FileType>
-      <tvExp>1</tvExp>
+      <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\stm32f4xx_it.c</PathWithFileName>

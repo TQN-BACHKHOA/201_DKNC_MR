@@ -70,7 +70,7 @@ void IntToString(int32_t u, char *y);
 
 struct motor_Values{
 	float measure_RPM;
-	float setpoint_RPM;
+	//float setpoint_RPM;
 	int16_t pre_counter;
 	int16_t counter;
 } extern mainMotor;

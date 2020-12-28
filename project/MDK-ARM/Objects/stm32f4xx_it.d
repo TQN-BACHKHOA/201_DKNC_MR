@@ -39,3 +39,4 @@
 .\objects\stm32f4xx_it.o: F:\Applications\Keil uVision 5\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
 .\objects\stm32f4xx_it.o: F:\Applications\Keil uVision 5\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
 .\objects\stm32f4xx_it.o: F:\Applications\Keil uVision 5\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
+.\objects\stm32f4xx_it.o: ..\MDK-ARM\user_STR_Controller.h

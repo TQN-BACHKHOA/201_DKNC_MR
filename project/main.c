@@ -10,7 +10,7 @@ DMA_InitTypeDef 					DMA_InitStructure;
 char RXBuffer[BUFF_SIZE_RX];
 char TXBuffer[BUFF_SIZE_TX] = {'$','S','P','E','E','D',',','0','0','0','0','0','\r','\n'};
 union ByteToFloat m_data;
-struct motor_Values mainMotor = {0, NULL, 0, 0};
+struct motor_Values mainMotor = {0, 0, 0};
 
 int main(void){
 		SystemInit();
@@ -18,6 +18,7 @@ int main(void){
 		My_GPIO_Init();
 		My_TIMER_Init();
 		My_PWM_Init();
+		Encoder_Init();
 	
     initPI_Para();
     initSTR_Para();
@@ -25,16 +26,19 @@ int main(void){
 				PI_Controller();
 				if (STR.u > 990)
 					STR.u = 990;
-				if (STR.u < 10)
-					STR.u = 10;
-				TIM1->CCR1 = (int)STR.u;
-				delay_ms(PI.T*1000);
+				if (STR.u < 499)
+					STR.u = 499;
+				if ((PI.error >= 3) || (PI.error <= -3)){
+						TIM1->CCR1 = (int)STR.u;//(STR.u/99*490 + 499);
+				}
+//				delay_ms(PI.T*1000);
 				STR.pre_y = STR.y;
 				STR.y = mainMotor.measure_RPM;
 				PI.pre_error = PI.error;
 				PI.error = PI.setpoint - STR.y;
+				
 				LMS_Estimation();
-			
+				delay_ms(PI.T*1000);
 //				if (mainMotor.setpoint_RPM != mainMotor.pre_setpoint_RPM){
 //						PID_control(mainMotor.setpoint_RPM, mainMotor.measure_RPM);
 //				}
@@ -202,7 +206,7 @@ void My_TIMER_Init(void){
 		
 		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
 		TIM_BaseStruct.TIM_Prescaler 						= 8399;
-		TIM_BaseStruct.TIM_Period 							= 24; //delay 25ms
+		TIM_BaseStruct.TIM_Period 							= 249; //delay 25ms
 		TIM_BaseStruct.TIM_CounterMode 					= TIM_CounterMode_Up;
 		TIM_BaseStruct.TIM_ClockDivision 				= 0;
 		TIM_BaseStruct.TIM_RepetitionCounter 		= 0;
@@ -210,6 +214,7 @@ void My_TIMER_Init(void){
 		TIM_UpdateDisableConfig(TIM3, DISABLE);
 		TIM_ARRPreloadConfig(TIM3, ENABLE);
 		TIM_ITConfig(TIM3,TIM_IT_Update,ENABLE);
+		TIM_Cmd(TIM3, ENABLE);
 		
 		NVIC_InitStruct.NVIC_IRQChannel 										= TIM3_IRQn;
 		NVIC_InitStruct.NVIC_IRQChannelPreemptionPriority 	= 0;

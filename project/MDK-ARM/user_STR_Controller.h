@@ -12,7 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define ARRAY_MAX_SIZE 4
+#define ARRAY_MAX_SIZE 2
 
 void matrixDelete(float inputMatrix[][ARRAY_MAX_SIZE], int rowInput, int columnInput);
 void matrixMultiply(float firstMatrix[][ARRAY_MAX_SIZE], float secondMatrix[][ARRAY_MAX_SIZE], float returnMatrix[][ARRAY_MAX_SIZE], int rowFirst, int columnFirst, int rowSecond, int columnSecond);

@@ -169,24 +169,28 @@ void DMA1_Stream1_IRQHandler(void){
 		}
 		if(checksum_Rx == RXBuffer[11])
 			if(m_data.myfloat<=250 && m_data.myfloat>=-250)
-				mainMotor.setpoint_RPM = m_data.myfloat;
-				PI.setpoint						 = mainMotor.setpoint_RPM;
+				PI.setpoint = m_data.myfloat;
 	}
 	DMA_Cmd(DMA1_Stream1, ENABLE);
 }
 
+int32_t cnt = 0;
 void TIM3_IRQHandler(void){
 		if (TIM_GetITStatus(TIM3, TIM_IT_Update) != RESET){
 				TIM_Cmd(TIM3, DISABLE);
 				TIM_SetCounter(TIM3, 0);
-				GPIO_ToggleBits(GPIOD, GPIO_Pin_12);
-				
+			if (cnt%50 == 0){
+					GPIO_ToggleBits(GPIOD, GPIO_Pin_12);
+			}
+				cnt++;
 				// Calculate the speed
-				int16_t tmp_cnt = TIM5->CNT;
-				TIM_SetCounter(TIM5, IC_StartPoint);
-				mainMotor.measure_RPM = (tmp_cnt - IC_StartPoint)*60*40/(4*counterPerRound);
+				//int16_t tmp_cnt = TIM5->CNT;
+				
+				mainMotor.measure_RPM = (TIM5->CNT - IC_StartPoint)*60*40/(4*counterPerRound);
+				
 				checkSpeed();
-			
+				TIM_SetCounter(TIM5, IC_StartPoint);
+				TIM_Cmd(TIM3, ENABLE);
 				TIM_ClearITPendingBit(TIM3, TIM_IT_Update);
 		}
 }
