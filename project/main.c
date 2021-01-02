@@ -11,6 +11,7 @@ char RXBuffer[BUFF_SIZE_RX];
 char TXBuffer[BUFF_SIZE_TX] = {'$','S','P','E','E','D',',','0','0','0','0','0','\r','\n'};
 union ByteToFloat m_data;
 struct motor_Values mainMotor = {0, 0, 0};
+float Out, LMS_Pend_Flag,Temp;
 
 int main(void){
 		SystemInit();
@@ -19,32 +20,44 @@ int main(void){
 		My_TIMER_Init();
 		My_PWM_Init();
 		Encoder_Init();
-	
     initPI_Para();
     initSTR_Para();
 		while(1){
+//					TIM1->CCR1 = 499;
+//					TIM1->CCR3 = 33;
+				if(LMS_Pend_Flag)
 				PI_Controller();
 				if (STR.u > 990)
 					STR.u = 990;
-				if (STR.u < 499)
-					STR.u = 499;
-				if ((PI.error >= 3) || (PI.error <= -3)){
-						TIM1->CCR1 = (int)STR.u;//(STR.u/99*490 + 499);
-				}
-//				delay_ms(PI.T*1000);
+				else if (STR.u < -990) //33
+					STR.u = -990;
+				convert();
 				STR.pre_y = STR.y;
 				STR.y = mainMotor.measure_RPM;
 				PI.pre_error = PI.error;
 				PI.error = PI.setpoint - STR.y;
-				
-				LMS_Estimation();
+				if (LMS_Pend_Flag)
+						LMS_Estimation();
 				delay_ms(PI.T*1000);
-//				if (mainMotor.setpoint_RPM != mainMotor.pre_setpoint_RPM){
-//						PID_control(mainMotor.setpoint_RPM, mainMotor.measure_RPM);
-//				}
-//				checkSpeed();
-//				delay_ms(PID.T*1000);
 		}
+}
+
+void convert(){
+		if ((PI.error >= 3) || (PI.error <= -3)){
+			if ((STR.u < 33) && (STR.u >= 0)){
+					STR.u = 33;
+			}else if ((STR.u > -33) && (STR.u < 0))
+					STR.u = -33;
+			if ((STR.u >= 33)){
+					TIM1->CCR1 = (int)STR.u;
+					TIM1->CCR3 = 33;
+					LMS_Pend_Flag = 1;
+			}else if ((STR.u <= -33)){
+					TIM1->CCR1 = 33;
+					TIM1->CCR3 = -((int)STR.u);
+					LMS_Pend_Flag = 1;		
+			}
+		}else LMS_Pend_Flag = 0;
 }
 
 void checkSpeed(){
@@ -61,115 +74,116 @@ void checkSpeed(){
 }
 
 void USART_DMA_Configuration(unsigned int BaudRate){
-	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART3, ENABLE);
-	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA1, ENABLE);
-	
-	GPIO_PinAFConfig(GPIOD, GPIO_PinSource8, GPIO_AF_USART3);
-	GPIO_PinAFConfig(GPIOD, GPIO_PinSource9, GPIO_AF_USART3); 
-	
-	/* Khoi tao chân TX & RX Uart*/
-	GPIO_InitStruct.GPIO_OType = GPIO_OType_PP;
-	GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_UP;
-	GPIO_InitStruct.GPIO_Mode = GPIO_Mode_AF;
-	GPIO_InitStruct.GPIO_Pin = GPIO_Pin_8 | GPIO_Pin_9;
-	GPIO_InitStruct.GPIO_Speed = GPIO_Speed_100MHz;
-	GPIO_Init(GPIOD, &GPIO_InitStruct);
-	
-	USART_InitStruct.USART_BaudRate = BaudRate;
+		RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
+		RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART3, ENABLE);
+		RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA1, ENABLE);
+		
+		GPIO_PinAFConfig(GPIOD, GPIO_PinSource8, GPIO_AF_USART3);
+		GPIO_PinAFConfig(GPIOD, GPIO_PinSource9, GPIO_AF_USART3); 
+		
+		/* Khoi tao chân TX & RX Uart*/
+		GPIO_InitStruct.GPIO_OType = GPIO_OType_PP;
+		GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_UP;
+		GPIO_InitStruct.GPIO_Mode = GPIO_Mode_AF;
+		GPIO_InitStruct.GPIO_Pin = GPIO_Pin_8 | GPIO_Pin_9;
+		GPIO_InitStruct.GPIO_Speed = GPIO_Speed_100MHz;
+		GPIO_Init(GPIOD, &GPIO_InitStruct);
+		
+		USART_InitStruct.USART_BaudRate = BaudRate;
 
-	USART_InitStruct.USART_WordLength = USART_WordLength_8b;
-	USART_InitStruct.USART_StopBits = MAIN_STOPBITS;
-	USART_InitStruct.USART_Parity = MAIN_PARITY;
-	USART_InitStruct.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
-	USART_InitStruct.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
-	USART_Init(USART3, &USART_InitStruct);
+		USART_InitStruct.USART_WordLength = USART_WordLength_8b;
+		USART_InitStruct.USART_StopBits = MAIN_STOPBITS;
+		USART_InitStruct.USART_Parity = MAIN_PARITY;
+		USART_InitStruct.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+		USART_InitStruct.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
+		USART_Init(USART3, &USART_InitStruct);
 
-	USART_Cmd(USART3, ENABLE);
-	/* Enable USART3 DMA */
-	USART_DMACmd(USART3, USART_DMAReq_Tx, ENABLE);
-	USART_DMACmd(USART3, USART_DMAReq_Rx, ENABLE);
-	/* Configure DMA Initialization Structure */
-	
-	DMA_InitStructure.DMA_FIFOMode = DMA_FIFOMode_Disable ;
-	DMA_InitStructure.DMA_FIFOThreshold = DMA_FIFOThreshold_HalfFull ;
-	DMA_InitStructure.DMA_MemoryBurst = DMA_MemoryBurst_Single ;
-	DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;
-	DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
-	DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;
+		USART_Cmd(USART3, ENABLE);
+		/* Enable USART3 DMA */
+		USART_DMACmd(USART3, USART_DMAReq_Tx, ENABLE);
+		USART_DMACmd(USART3, USART_DMAReq_Rx, ENABLE);
+		/* Configure DMA Initialization Structure */
+		
+		DMA_InitStructure.DMA_FIFOMode = DMA_FIFOMode_Disable ;
+		DMA_InitStructure.DMA_FIFOThreshold = DMA_FIFOThreshold_HalfFull ;
+		DMA_InitStructure.DMA_MemoryBurst = DMA_MemoryBurst_Single ;
+		DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;
+		DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
+		DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;
 
-	DMA_InitStructure.DMA_PeripheralBaseAddr =(uint32_t) (&(USART3->DR)) ;
-	DMA_InitStructure.DMA_PeripheralBurst = DMA_PeripheralBurst_Single;
-	DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
-	DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
-	DMA_InitStructure.DMA_Priority = DMA_Priority_High;
+		DMA_InitStructure.DMA_PeripheralBaseAddr =(uint32_t) (&(USART3->DR)) ;
+		DMA_InitStructure.DMA_PeripheralBurst = DMA_PeripheralBurst_Single;
+		DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
+		DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
+		DMA_InitStructure.DMA_Priority = DMA_Priority_High;
 
-	/* Configure TX DMA */
-	DMA_InitStructure.DMA_BufferSize = BUFF_SIZE_TX;
-	DMA_InitStructure.DMA_Channel = DMA_Channel_4 ;
-	DMA_InitStructure.DMA_DIR = DMA_DIR_MemoryToPeripheral ;
-	DMA_InitStructure.DMA_Memory0BaseAddr =(uint32_t)TXBuffer ;
-	DMA_Init(DMA1_Stream3,&DMA_InitStructure);
-	DMA_Cmd(DMA1_Stream3, ENABLE);
-	
-	/* Configure RX DMA */
-	DMA_InitStructure.DMA_BufferSize = BUFF_SIZE_RX;
-	DMA_InitStructure.DMA_Channel = DMA_Channel_4 ;
-	DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralToMemory ;
-	DMA_InitStructure.DMA_Memory0BaseAddr =(uint32_t)&RXBuffer;
-	DMA_Init(DMA1_Stream1,&DMA_InitStructure);	
-	DMA_Cmd(DMA1_Stream1, ENABLE);
-	
-	/* Enable DMA Interrupt to the highest priority */
-	NVIC_InitStruct.NVIC_IRQChannel = DMA1_Stream1_IRQn;
-	NVIC_InitStruct.NVIC_IRQChannelPreemptionPriority = 0;
-	NVIC_InitStruct.NVIC_IRQChannelSubPriority = 0;
-	NVIC_InitStruct.NVIC_IRQChannelCmd = ENABLE;
-	NVIC_Init(&NVIC_InitStruct);
-	/* Transfer complete interrupt mask */
-	DMA_ITConfig(DMA1_Stream1, DMA_IT_TC, ENABLE);
+		/* Configure TX DMA */
+		DMA_InitStructure.DMA_BufferSize = BUFF_SIZE_TX;
+		DMA_InitStructure.DMA_Channel = DMA_Channel_4 ;
+		DMA_InitStructure.DMA_DIR = DMA_DIR_MemoryToPeripheral ;
+		DMA_InitStructure.DMA_Memory0BaseAddr =(uint32_t)TXBuffer ;
+		DMA_Init(DMA1_Stream3,&DMA_InitStructure);
+		DMA_Cmd(DMA1_Stream3, ENABLE);
+		
+		/* Configure RX DMA */
+		DMA_InitStructure.DMA_BufferSize = BUFF_SIZE_RX;
+		DMA_InitStructure.DMA_Channel = DMA_Channel_4 ;
+		DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralToMemory ;
+		DMA_InitStructure.DMA_Memory0BaseAddr =(uint32_t)&RXBuffer;
+		DMA_Init(DMA1_Stream1,&DMA_InitStructure);	
+		DMA_Cmd(DMA1_Stream1, ENABLE);
+		
+		/* Enable DMA Interrupt to the highest priority */
+		NVIC_InitStruct.NVIC_IRQChannel = DMA1_Stream1_IRQn;
+		NVIC_InitStruct.NVIC_IRQChannelPreemptionPriority = 0;
+		NVIC_InitStruct.NVIC_IRQChannelSubPriority = 0;
+		NVIC_InitStruct.NVIC_IRQChannelCmd = ENABLE;
+		NVIC_Init(&NVIC_InitStruct);
+		/* Transfer complete interrupt mask */
+		DMA_ITConfig(DMA1_Stream1, DMA_IT_TC, ENABLE);
 }
 
 void delay_ms(uint32_t milliSeconds){
-	while (milliSeconds--){
-		TIM_SetCounter(TIM6, 0);
-		TIM_Cmd(TIM6, ENABLE);
-		while (TIM_GetFlagStatus(TIM6, TIM_FLAG_Update) != SET);
-		TIM_Cmd(TIM6, DISABLE);
-		TIM_ClearFlag(TIM6, TIM_FLAG_Update);
-	}
+		while (milliSeconds--){
+				TIM_SetCounter(TIM6, 0);
+				TIM_Cmd(TIM6, ENABLE);
+				while (TIM_GetFlagStatus(TIM6, TIM_FLAG_Update) != SET);
+				TIM_Cmd(TIM6, DISABLE);
+				TIM_ClearFlag(TIM6, TIM_FLAG_Update);
+		}
 }
 
 void delay_us(uint32_t microSeconds){
-	TIM_SetCounter(TIM6, 0);
-	TIM_Cmd(TIM6, ENABLE);
-	while (TIM_GetCounter(TIM6) < microSeconds);
-	TIM_Cmd(TIM6, DISABLE);
+		TIM_SetCounter(TIM6, 0);
+		TIM_Cmd(TIM6, ENABLE);
+		while (TIM_GetCounter(TIM6) < microSeconds);
+		TIM_Cmd(TIM6, DISABLE);
 }
 
 void My_GPIO_Init(void){
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM1, ENABLE);
-	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
-	GPIO_PinAFConfig(GPIOA, GPIO_PinSource7, GPIO_AF_TIM1);
-  GPIO_PinAFConfig(GPIOA, GPIO_PinSource8, GPIO_AF_TIM1);
+		RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM1, ENABLE);
+		RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
+		
+		GPIO_InitStruct.GPIO_Pin = GPIO_Pin_8 | GPIO_Pin_10;
+		GPIO_InitStruct.GPIO_OType = GPIO_OType_PP;
+		GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_NOPULL;
+		GPIO_InitStruct.GPIO_Mode = GPIO_Mode_AF;
+		GPIO_InitStruct.GPIO_Speed = GPIO_Speed_100MHz;
+		GPIO_Init(GPIOA, &GPIO_InitStruct);
+		
+		GPIO_PinAFConfig(GPIOA, GPIO_PinSource8, GPIO_AF_TIM1);
+		GPIO_PinAFConfig(GPIOA, GPIO_PinSource10, GPIO_AF_TIM1);	
 	
-	GPIO_InitStruct.GPIO_Pin = GPIO_Pin_7 | GPIO_Pin_8;
-	GPIO_InitStruct.GPIO_OType = GPIO_OType_PP;
-	GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_NOPULL;
-	GPIO_InitStruct.GPIO_Mode = GPIO_Mode_AF;
-	GPIO_InitStruct.GPIO_Speed = GPIO_Speed_100MHz;
-	GPIO_Init(GPIOA, &GPIO_InitStruct);
-	
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
-	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
-	GPIO_PinAFConfig(GPIOD, GPIO_PinSource12, GPIO_AF_TIM4);
-	
-	GPIO_InitStruct.GPIO_Pin = GPIO_Pin_12;
-	GPIO_InitStruct.GPIO_OType = GPIO_OType_PP;
-	GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_NOPULL;
-	GPIO_InitStruct.GPIO_Mode = GPIO_Mode_OUT;
-	GPIO_InitStruct.GPIO_Speed = GPIO_Speed_100MHz;
-	GPIO_Init(GPIOD, &GPIO_InitStruct);
+		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
+		RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
+		GPIO_PinAFConfig(GPIOD, GPIO_PinSource12, GPIO_AF_TIM4);
+		
+		GPIO_InitStruct.GPIO_Pin = GPIO_Pin_12;
+		GPIO_InitStruct.GPIO_OType = GPIO_OType_PP;
+		GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_NOPULL;
+		GPIO_InitStruct.GPIO_Mode = GPIO_Mode_OUT;
+		GPIO_InitStruct.GPIO_Speed = GPIO_Speed_100MHz;
+		GPIO_Init(GPIOD, &GPIO_InitStruct);
 }
 
 void My_TIMER_Init(void){
@@ -203,39 +217,20 @@ void My_TIMER_Init(void){
 		TIM_TimeBaseInit(TIM7, &TIM_BaseStruct);
 		TIM_UpdateDisableConfig(TIM7, DISABLE);
 		TIM_ARRPreloadConfig(TIM7, ENABLE);
-		
-		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
-		TIM_BaseStruct.TIM_Prescaler 						= 8399;
-		TIM_BaseStruct.TIM_Period 							= 249; //delay 25ms
-		TIM_BaseStruct.TIM_CounterMode 					= TIM_CounterMode_Up;
-		TIM_BaseStruct.TIM_ClockDivision 				= 0;
-		TIM_BaseStruct.TIM_RepetitionCounter 		= 0;
-		TIM_TimeBaseInit(TIM3, &TIM_BaseStruct);
-		TIM_UpdateDisableConfig(TIM3, DISABLE);
-		TIM_ARRPreloadConfig(TIM3, ENABLE);
-		TIM_ITConfig(TIM3,TIM_IT_Update,ENABLE);
-		TIM_Cmd(TIM3, ENABLE);
-		
-		NVIC_InitStruct.NVIC_IRQChannel 										= TIM3_IRQn;
-		NVIC_InitStruct.NVIC_IRQChannelPreemptionPriority 	= 0;
-		NVIC_InitStruct.NVIC_IRQChannelSubPriority 					= 1;
-		NVIC_InitStruct.NVIC_IRQChannelCmd 									= ENABLE;
-		NVIC_Init(&NVIC_InitStruct);
 }
 
 void My_PWM_Init(void){
 		TIM_OCStruct.TIM_OCMode 						= TIM_OCMode_PWM1; //clear on compare match
 		TIM_OCStruct.TIM_OutputState 				= TIM_OutputState_Enable;
-		TIM_OCStruct.TIM_OutputNState 			= TIM_OutputNState_Enable;
 		TIM_OCStruct.TIM_OCPolarity 				= TIM_OCPolarity_High;
-		TIM_OCStruct.TIM_OCNPolarity 				= TIM_OCNPolarity_High;
 		
-		TIM_OCStruct.TIM_Pulse 							= 50*1000/100 - 1;
+		TIM_OCStruct.TIM_Pulse 							= 33;
 		TIM_OC1Init(TIM1, &TIM_OCStruct);
 		TIM_OC1PreloadConfig(TIM1, TIM_OCPreload_Enable);
 		
-		TIM_OC2Init(TIM1, &TIM_OCStruct);
-		TIM_OC2PreloadConfig(TIM1, TIM_OCPreload_Enable);
+		TIM_OCStruct.TIM_Pulse 							= 33;
+		TIM_OC3Init(TIM1, &TIM_OCStruct);
+		TIM_OC3PreloadConfig(TIM1, TIM_OCPreload_Enable);
 		
 		TIM_ARRPreloadConfig(TIM1,ENABLE);
 		TIM_Cmd(TIM1,ENABLE);
@@ -272,6 +267,24 @@ void Encoder_Init(void){
 		TIM_SetCounter(TIM5, IC_StartPoint);
 		TIM_Cmd(TIM5, ENABLE);
 		TIM_ClearFlag(TIM5, TIM_FLAG_Update);
+		
+		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
+		TIM_BaseStruct.TIM_Prescaler 						= 8399;
+		TIM_BaseStruct.TIM_Period 							= 249; //delay 5ms
+		TIM_BaseStruct.TIM_CounterMode 					= TIM_CounterMode_Up;
+		TIM_BaseStruct.TIM_ClockDivision 				= 0;
+		TIM_BaseStruct.TIM_RepetitionCounter 		= 0;
+		TIM_TimeBaseInit(TIM3, &TIM_BaseStruct);
+		TIM_UpdateDisableConfig(TIM3, DISABLE);
+		TIM_ARRPreloadConfig(TIM3, ENABLE);
+		TIM_ITConfig(TIM3,TIM_IT_Update,ENABLE);
+		TIM_Cmd(TIM3, ENABLE);
+		
+		NVIC_InitStruct.NVIC_IRQChannel 										= TIM3_IRQn;
+		NVIC_InitStruct.NVIC_IRQChannelPreemptionPriority 	= 0;
+		NVIC_InitStruct.NVIC_IRQChannelSubPriority 					= 1;
+		NVIC_InitStruct.NVIC_IRQChannelCmd 									= ENABLE;
+		NVIC_Init(&NVIC_InitStruct);
 }
 
 void SendUSART(char* data){ //dia chi bat dau cua chuoi

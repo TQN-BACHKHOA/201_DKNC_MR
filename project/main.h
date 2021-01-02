@@ -50,6 +50,7 @@ extern void delay_us(uint32_t microSeconds);
 extern void SendUSART(char* data); 
 extern char* GetUSART(void);
 extern int GetInt(void);
+extern void convert(void);
 
 #define MAIN_BAUDRATE 115200 
 #define MAIN_STOPBITS USART_StopBits_2
@@ -78,7 +79,7 @@ union ByteToFloat{
 	float myfloat;
 	char mybyte[4];
 } extern m_data;
-
+float extern Out,Pre_In, Pre_Out1, Pre_Out2, LMS_Pend_Flag, Temp;
 
 #endif /* __MAIN_H */
 

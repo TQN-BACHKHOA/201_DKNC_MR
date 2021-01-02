@@ -35,7 +35,11 @@ struct STRPara{
 } extern STR;
 
 struct PIPara{
-    float T, error, pre_error, setpoint;
+    float T, error, pre_error, setpoint, direction;
 } extern PI;
+
+struct FilterPara{
+		float a,b,c,d;
+} extern Filter;
 
 #endif /* user_STR_Controller_h */

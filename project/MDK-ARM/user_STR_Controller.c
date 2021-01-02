@@ -8,8 +8,9 @@
 
 #include "user_STR_Controller.h"
 
-struct STRPara STR = {};
-struct PIPara PI = {};
+struct STRPara STR;
+struct PIPara PI;
+struct FilterPara Filter;
 
 //Update STR.u when finish function PI_Controller()
 //Update STR.y and PI.error when read speed from encoder
@@ -34,7 +35,8 @@ void initPI_Para(){
     PI.T            = 0.025;
     PI.pre_error    = 0;
     PI.error        = 0;
-    PI.setpoint     = 50;
+    PI.setpoint     = 0;
+		PI.direction		= 1;
 }
 
 void initSTR_Para(){
@@ -42,8 +44,8 @@ void initSTR_Para(){
     STR.error  = 0;
 		STR.pre_y  = 0;
     STR.y      = 0;
-		STR.pre_u  = 499;
-    STR.u      = 499;
+		STR.pre_u  = 0;
+    STR.u      = 0;
 	  float tmp_data[ARRAY_MAX_SIZE]  = {1, 1};
     float tmp_data1[ARRAY_MAX_SIZE*2] = {1, 0, 0, 1};
 		
@@ -56,9 +58,9 @@ void initSTR_Para(){
 		matrixCreate(STR.pre_P,			2, 2, tmp_data1);
 }
 
-void PI_Controller(){
+ void PI_Controller(){
 	  STR.pre_u = STR.u;
-    STR.u = STR.pre_u + (0.508 - STR.theta[0][0])*(PI.error - PI.pre_error)/STR.theta[1][0] + 1.21*PI.T*(PI.error + PI.pre_error)/(STR.theta[1][0]*2);
+    STR.u = STR.pre_u + (-0.6447 - STR.theta[0][0])*(PI.error - PI.pre_error)/STR.theta[1][0] + 2.0498*PI.T*(PI.error + PI.pre_error)/(STR.theta[1][0]*2);
 }
 
 void LMS_Estimation(){

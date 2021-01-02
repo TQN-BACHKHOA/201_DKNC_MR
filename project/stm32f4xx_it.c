@@ -29,6 +29,9 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f4xx_it.h"
+#include "user_STR_Controller.h"
+float Out_1=0,Pre_In=0,Pre_Out1=0,Pre_Out2=0;
+float Temp_Speed=0;
 
 /** @addtogroup Template_Project
   * @{
@@ -159,19 +162,23 @@ void SysTick_Handler(void)
 {
 }*/
 void DMA1_Stream1_IRQHandler(void){
-	char checksum_Rx = 0;
-	DMA_ClearITPendingBit(DMA1_Stream1, DMA_IT_TCIF1);
-	GPIO_ToggleBits(GPIOD, GPIO_Pin_12);
-	if(RXBuffer[0]=='$' && RXBuffer[1]=='S' && RXBuffer[2]=='P' && RXBuffer[3]=='E' && RXBuffer[4]=='E' && RXBuffer[5]=='D' && RXBuffer[6]==','){
-		for(int k = 0; k < 4; k++){
-			m_data.mybyte[3-k] = RXBuffer[7+k];
-			checksum_Rx += RXBuffer[7+k];
-		}
+		char checksum_Rx = 0;
+		DMA_ClearITPendingBit(DMA1_Stream1, DMA_IT_TCIF1);
+		GPIO_ToggleBits(GPIOD, GPIO_Pin_12);
+		if(RXBuffer[0]=='$' && RXBuffer[1]=='S' && RXBuffer[2]=='P' && RXBuffer[3]=='E' && RXBuffer[4]=='E' && RXBuffer[5]=='D' && RXBuffer[6]==','){
+				for(int k = 0; k < 4; k++){
+						m_data.mybyte[3-k] = RXBuffer[7+k];
+						checksum_Rx += RXBuffer[7+k];
+				}
 		if(checksum_Rx == RXBuffer[11])
-			if(m_data.myfloat<=250 && m_data.myfloat>=-250)
-				PI.setpoint = m_data.myfloat;
-	}
-	DMA_Cmd(DMA1_Stream1, ENABLE);
+				if((m_data.myfloat <= 250) && (m_data.myfloat >= -250)){
+						PI.setpoint = m_data.myfloat;
+						if(PI.setpoint >= 0){
+								PI.direction = 1;
+						}else PI.direction = -1;
+				}
+		}
+		DMA_Cmd(DMA1_Stream1, ENABLE);
 }
 
 int32_t cnt = 0;
@@ -179,15 +186,20 @@ void TIM3_IRQHandler(void){
 		if (TIM_GetITStatus(TIM3, TIM_IT_Update) != RESET){
 				TIM_Cmd(TIM3, DISABLE);
 				TIM_SetCounter(TIM3, 0);
-			if (cnt%50 == 0){
+
+				// Calculate the speed
+			int lalala = TIM5->CNT;
+			mainMotor.measure_RPM = (lalala - IC_StartPoint)*60*40/(4*counterPerRound);
+			if ((mainMotor.measure_RPM > 300) || (mainMotor.measure_RPM < -300) || (mainMotor.measure_RPM == 0)){
+					mainMotor.measure_RPM = 1;
+			}
+		
+//			mainMotor.measure_RPM = (mainMotor.measure_RPM > 300)? 1:mainMotor.measure_RPM;
+//			mainMotor.measure_RPM = (mainMotor.measure_RPM ==0)? 1:mainMotor.measure_RPM;
+			if (cnt%3 == 0){
 					GPIO_ToggleBits(GPIOD, GPIO_Pin_12);
 			}
 				cnt++;
-				// Calculate the speed
-				//int16_t tmp_cnt = TIM5->CNT;
-				
-				mainMotor.measure_RPM = (TIM5->CNT - IC_StartPoint)*60*40/(4*counterPerRound);
-				
 				checkSpeed();
 				TIM_SetCounter(TIM5, IC_StartPoint);
 				TIM_Cmd(TIM3, ENABLE);
